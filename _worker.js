@@ -1,17 +1,24 @@
 const fileRegex = /^\/((index\.html|robots\.txt|LICENSE)|((js|images).+))?$/;
+function encodeProtocol(protocol) {
+  let result = "";
 
-import { encodeProtocol } from './encode.js'; // Import the encoding functions
+  for (let i = 0; i < protocol.length; i++) {
+    const char = protocol[i];
+
+    if (validChars.includes(char) && char !== reserveChar) {
+      result += char;
+    } else {
+      const code = char.charCodeAt(0);
+      result += reserveChar + code.toString(16).padStart(2, "0");
+    }
+  }
+
+  return result;
+}
+
 
 async function handleRequest(req, env) {
   const { host: originalHost, pathname: originalPath } = new URL(req.url);
-  /**
- * Handles the incoming request.
- *
- * @param {Request} req - The incoming request object.
- * @param {object} env - The environment object.
- * @returns {Promise<Response>} The response object promise.
- */
-
 
   if (fileRegex.test(originalPath)) return env.ASSETS.fetch(req);
 
@@ -29,7 +36,7 @@ async function handleRequest(req, env) {
   if (host.length < 3)
     return new Response("Request too Short!", { status: 404 });
 
-  await fetch("https://web.archive.org/save/" + url);
+  fetch("https://web.archive.org/save/" + url);
 
   var reqObj = {
     headers: req.headers,
@@ -41,10 +48,6 @@ async function handleRequest(req, env) {
   if (req.body) reqObj.body = req.body;
 
   var data = await fetch(url, reqObj);
-
-  // Encode the URL in the response body
-  const encodedUrl = encodeProtocol(url); // Use the encodeProtocol function
-  const encodedData = await data.text().then(txt => txt.replace(url, encodedUrl));
 
   try {
     var ct = await data.headers.get("content-type");
@@ -77,7 +80,7 @@ async function handleRequest(req, env) {
         var hostEnd = host.split(".").slice(-2).join(".");
         // handles some rare cases
         txt = txt.replace(
-          /(?<=(href|src)=)(?!https?:\/\/)[^ :">]+(?=>)/g,
+          /(?<=(href|src)=)(?!https?:\\?\/\\?\/)[^ :">]+(?=>)/g,
           (m) => {
             let hashPart = "";
             const hashIndex = m.indexOf("#");
@@ -85,11 +88,12 @@ async function handleRequest(req, env) {
               m = m.slice(0, hashIndex);
               hashPart = m.slice(hashIndex);
             }
-            return `/${host}/${absolute(m)}${hashPart}`;
+            return `/${host}/${encodeProtocol(absolute(m))}${hashPart}`;
+
           }
         );
         txt = txt.replace(
-          /(?<=(href|src)=")(?!https?:\/\/)[^:"]+/g,
+          /(?<=(href|src)=")(?!https?:\\?\/\\?\/)[^:"]+/g,
           (m) => {
             let hashPart = "";
             const hashIndex = m.indexOf("#");
@@ -97,24 +101,25 @@ async function handleRequest(req, env) {
               m = m.slice(0, hashIndex);
               hashPart = m.slice(hashIndex);
             }
-            return `/${host}/${absolute(m)}${hashPart}`;
+            return `/${host}/${encodeProtocol(absolute(m))}${hashPart}`;
           }
         );
-        txt = txt.replace(/https?:\/\/(\w(\.|-|))+/g, (m) => {
+        txt = txt.replace(/https?:\\?\/\\?\/(\w(\.|-|))+/g, (m) => {
           if (m.includes(hostEnd)) {
-            if (m.includes("\\/")) return "\\/";
-          }
-          return m
-            .split("/")
-            .map((part) => encodeURIComponent(part))
-            .join("/");
+            if (m.includes("\\/")) return "\\/" + m.split(/\\?\//).slice(-1);
+            return "/" + encodeProtocol(m.split("/").slice(-1));
+          } else return m;
         });
-        data = new
-        Response(txt, data); }) .catch((e) => console.log(e)); }
+        data = new Response(txt, {
+          status: data.status,
+          headers: data.headers,
+        });
+        data.headers.delete("cros");
+      })
+      .catch((e) => console.log(e));
+  }
 
-        // Modify the response headers data.headers.set("cache-control", "no-store"); data.headers.set("x-robots-tag", "noindex, nofollow");
-        
-        return data; }
-        
-        export default { fetch: handleRequest };
-      
+  return data;
+}
+
+export default { fetch: handleRequest };
