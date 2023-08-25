@@ -4,6 +4,14 @@ import { encodeProtocol } from './encode.js'; // Import the encoding functions
 
 async function handleRequest(req, env) {
   const { host: originalHost, pathname: originalPath } = new URL(req.url);
+  /**
+ * Handles the incoming request.
+ *
+ * @param {Request} req - The incoming request object.
+ * @param {object} env - The environment object.
+ * @returns {Promise<Response>} The response object promise.
+ */
+
 
   if (fileRegex.test(originalPath)) return env.ASSETS.fetch(req);
 
