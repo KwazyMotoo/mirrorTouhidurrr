@@ -1,6 +1,6 @@
 const fileRegex = /^\/((index\.html|robots\.txt|LICENSE)|((js|images).+))?$/;
 
-import { encodeProtocol } from './encode'; // Import the encoding functions
+import { encodeProtocol } from './encode.js'; // Import the encoding functions
 
 async function handleRequest(req, env) {
   const { host: originalHost, pathname: originalPath } = new URL(req.url);
