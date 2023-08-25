@@ -1,21 +1,4 @@
 const fileRegex = /^\/((index\.html|robots\.txt|LICENSE)|((js|images).+))?$/;
-function encodeProtocol(protocol) {
-  let result = "";
-
-  for (let i = 0; i < protocol.length; i++) {
-    const char = protocol[i];
-
-    if (validChars.includes(char) && char !== reserveChar) {
-      result += char;
-    } else {
-      const code = char.charCodeAt(0);
-      result += reserveChar + code.toString(16).padStart(2, "0");
-    }
-  }
-
-  return result;
-}
-
 
 async function handleRequest(req, env) {
   const { host: originalHost, pathname: originalPath } = new URL(req.url);
@@ -86,10 +69,10 @@ async function handleRequest(req, env) {
             const hashIndex = m.indexOf("#");
             if (hashIndex > -1) {
               m = m.slice(0, hashIndex);
-              hashPart = m.slice(hashIndex);
+              hashPart
+              = m.slice(hashIndex);
             }
             return `/${host}/${encodeProtocol(absolute(m))}${hashPart}`;
-
           }
         );
         txt = txt.replace(
