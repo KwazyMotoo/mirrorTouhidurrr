@@ -1,5 +1,7 @@
 const fileRegex = /^\/((index\.html|robots\.txt|LICENSE)|((js|images).+))?$/;
 
+import { encodeProtocol } from './encode'; // Import the encoding functions
+
 async function handleRequest(req, env) {
   const { host: originalHost, pathname: originalPath } = new URL(req.url);
 
@@ -19,7 +21,7 @@ async function handleRequest(req, env) {
   if (host.length < 3)
     return new Response("Request too Short!", { status: 404 });
 
-  fetch("https://web.archive.org/save/" + url);
+  await fetch("https://web.archive.org/save/" + url);
 
   var reqObj = {
     headers: req.headers,
@@ -31,6 +33,10 @@ async function handleRequest(req, env) {
   if (req.body) reqObj.body = req.body;
 
   var data = await fetch(url, reqObj);
+
+  // Encode the URL in the response body
+  const encodedUrl = encodeProtocol(url); // Use the encodeProtocol function
+  const encodedData = await data.text().then(txt => txt.replace(url, encodedUrl));
 
   try {
     var ct = await data.headers.get("content-type");
@@ -63,7 +69,7 @@ async function handleRequest(req, env) {
         var hostEnd = host.split(".").slice(-2).join(".");
         // handles some rare cases
         txt = txt.replace(
-          /(?<=(href|src)=)(?!https?:\\?\/\\?\/)[^ :">]+(?=>)/g,
+          /(?<=(href|src)=)(?!https?:\/\/)[^ :">]+(?=>)/g,
           (m) => {
             let hashPart = "";
             const hashIndex = m.indexOf("#");
@@ -75,7 +81,7 @@ async function handleRequest(req, env) {
           }
         );
         txt = txt.replace(
-          /(?<=(href|src)=")(?!https?:\\?\/\\?\/)[^:"]+/g,
+          /(?<=(href|src)=")(?!https?:\/\/)[^:"]+/g,
           (m) => {
             let hashPart = "";
             const hashIndex = m.indexOf("#");
@@ -86,22 +92,21 @@ async function handleRequest(req, env) {
             return `/${host}/${absolute(m)}${hashPart}`;
           }
         );
-        txt = txt.replace(/https?:\\?\/\\?\/(\w(\.|-|))+/g, (m) => {
+        txt = txt.replace(/https?:\/\/(\w(\.|-|))+/g, (m) => {
           if (m.includes(hostEnd)) {
-            if (m.includes("\\/")) return "\\/" + m.split(/\\?\//).slice(-1);
-            return "/" + m.split("/").slice(-1);
-          } else return m;
+            if (m.includes("\\/")) return "\\/";
+          }
+          return m
+            .split("/")
+            .map((part) => encodeURIComponent(part))
+            .join("/");
         });
-        data = new Response(txt, {
-          status: data.status,
-          headers: data.headers,
-        });
-        data.headers.delete("cros");
-      })
-      .catch((e) => console.log(e));
-  }
+        data = new
+        Response(txt, data); }) .catch((e) => console.log(e)); }
 
-  return data;
-}
-
-export default { fetch: handleRequest };
+        // Modify the response headers data.headers.set("cache-control", "no-store"); data.headers.set("x-robots-tag", "noindex, nofollow");
+        
+        return data; }
+        
+        export default { fetch: handleRequest };
+      
